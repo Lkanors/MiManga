@@ -1,0 +1,19 @@
+# Сборка Gradle
+build/
+.gradle/
+app/build/
+
+# Локальные настройки: путь к Android SDK, адрес сервера и его сертификат.
+# Именно поэтому их здесь нет — см. README, раздел «Свой сервер».
+local.properties
+
+# Настройки Android Studio
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Прочее
+*.log
+.DS_Store

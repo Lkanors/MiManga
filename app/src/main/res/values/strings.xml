@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MiManga</string>
+    <!-- Почта для претензий по публикуемому материалу (показана в настройках). -->
+    <string name="contact_email">giromahiroma11@gmail.com</string>
+</resources>
