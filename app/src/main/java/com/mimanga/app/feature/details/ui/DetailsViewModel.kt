@@ -2,7 +2,7 @@ package com.mimanga.app.feature.details.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mimanga.app.data.remote.ServerException
+import com.mimanga.app.core.network.isAgeBlocked
 import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.domain.model.LibraryStatus
 import com.mimanga.app.domain.model.Manga
@@ -15,6 +15,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -40,6 +42,14 @@ class DetailsViewModel @Inject constructor(
                     runCatching { accountRepository.account().id }.getOrNull()
                 }
                 _state.update { it.copy(userId = userId) }
+            }
+        }
+        // Вход и выход меняют права на 18+. Открытая страница тайтла об этом
+        // сама не узнает: она уже загружена. Поэтому на смену аккаунта
+        // страница перечитывается — пустят на неё или нет, решает сервер.
+        viewModelScope.launch {
+            accountRepository.token.drop(1).distinctUntilChanged().collect {
+                if (_state.value.manga != null) refresh()
             }
         }
     }
@@ -95,11 +105,10 @@ class DetailsViewModel @Inject constructor(
      * показывать нечего — сервер не отдаст ни описания, ни глав.
      */
     private fun blockedByAge(error: Throwable?): Boolean {
-        val denied = error as? ServerException ?: return false
-        if (denied.status != 403) return false
+        if (error == null || !error.isAgeBlocked()) return false
         _state.update {
             it.copy(isLoadingDetail = false, isLoadingChapters = false,
-                    ageBlocked = true, error = denied.message)
+                    ageBlocked = true, error = error.userMessage("Тайтл недоступен"))
         }
         return true
     }
@@ -188,7 +197,9 @@ class DetailsViewModel @Inject constructor(
     fun refresh() {
         val manga = _state.value.manga ?: return
         viewModelScope.launch {
-            _state.update { it.copy(isLoadingDetail = true, error = null) }
+            // ageBlocked снимается здесь же: этот же тайтл после входа в
+            // аккаунт может и открыться.
+            _state.update { it.copy(isLoadingDetail = true, error = null, ageBlocked = false) }
             val loaded = runCatching { mangaRepository.getMangaById(manga.id) }
             if (blockedByAge(loaded.exceptionOrNull())) return@launch
             val full = loaded.getOrElse {

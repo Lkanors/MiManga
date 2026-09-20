@@ -1,6 +1,5 @@
 package com.mimanga.app.data.repository
 
-import com.mimanga.app.core.network.ServerImages
 import com.mimanga.app.data.remote.AuthStore
 import com.mimanga.app.data.remote.MangaServerApi
 import com.mimanga.app.domain.model.Account
@@ -26,37 +25,21 @@ class AccountRepositoryImpl @Inject constructor(
 
     override val token: StateFlow<String?> = authStore.token
 
-    /**
-     * Право на 18+ приходит в профиле, а нужно оно и адресам обложек: сервер
-     * отдаёт обложку 18+ размытой, и после входа в аккаунт за ней надо сходить
-     * заново (см. ServerImages.allowAdultCovers). Поэтому каждый ответ с
-     * профилем проходит через это место.
-     */
-    private fun remember(account: Account): Account {
-        ServerImages.allowAdultCovers(account.adultAllowed)
-        return account
-    }
-
     override suspend fun register(username: String, password: String,
                                   birthDate: String): Account =
-        remember(api.register(username, password, birthDate).user)
+        api.register(username, password, birthDate).user
 
     override suspend fun login(username: String, password: String): Account =
-        remember(api.login(username, password).user)
+        api.login(username, password).user
 
-    override suspend fun logout() {
-        api.logout()
-        // Вышел — значит снова гость, и обложки 18+ ему положены размытые.
-        ServerImages.allowAdultCovers(false)
-    }
+    override suspend fun logout() = api.logout()
 
-    override suspend fun account(): Account = remember(api.getAccount())
+    override suspend fun account(): Account = api.getAccount()
 
-    override suspend fun setBirthDate(birthDate: String): Account =
-        remember(api.setBirthDate(birthDate))
+    override suspend fun setBirthDate(birthDate: String): Account = api.setBirthDate(birthDate)
 
     override suspend fun setAdultVisibility(showAdult: Boolean): Account =
-        remember(api.setAdultVisibility(showAdult))
+        api.setAdultVisibility(showAdult)
 
     override suspend fun library(status: LibraryStatus?): List<Manga> =
         api.getLibrary(status?.key).results

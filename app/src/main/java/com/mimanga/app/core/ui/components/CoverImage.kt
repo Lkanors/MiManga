@@ -33,13 +33,20 @@ fun CoverImage(
     width: Int = ServerImages.CARD_WIDTH,
 ) {
     val proxied = ServerImages.cover(manga, width)
-    var useDirect by remember(proxied, manga.coverUrl) { mutableStateOf(proxied.isBlank()) }
+    // У тайтла 18+ запасного пути нет: обложку закрывает сервер, а прямая
+    // ссылка ведёт на CDN источника, где она лежит как есть. Уйти туда —
+    // значит показать её тому, от кого сервер её и закрыл. Лучше пустая
+    // карточка, чем обложка в обход правила.
+    val allowDirect = !manga.isAdult && manga.coverUrl.isNotBlank()
+    var useDirect by remember(proxied, manga.coverUrl) {
+        mutableStateOf(proxied.isBlank() && allowDirect)
+    }
     val model = if (useDirect) manga.coverUrl else proxied
     AsyncImage(
         model = model,
         contentDescription = manga.title,
         contentScale = contentScale,
-        onError = { if (!useDirect && manga.coverUrl.isNotBlank()) useDirect = true },
+        onError = { if (!useDirect && allowDirect) useDirect = true },
         modifier = modifier,
     )
 }
@@ -61,7 +68,8 @@ fun CoverImage(
 fun CoverBackdrop(manga: Manga, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val proxied = ServerImages.cover(manga, ServerImages.BLUR_WIDTH)
-    val url = proxied.ifBlank { manga.coverUrl }
+    // Прямая ссылка — только для тайтлов без ограничения (см. CoverImage).
+    val url = proxied.ifBlank { if (manga.isAdult) "" else manga.coverUrl }
     val request = remember(url) {
         ImageRequest.Builder(context)
             .data(url)

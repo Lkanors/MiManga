@@ -254,11 +254,19 @@ class MangaServerApi @Inject constructor(
             parameter("url", url)
         }.parse()
 
-    suspend fun getPages(sourceId: String, chapterUrl: String): PagesResponse =
+    /**
+     * Страницы главы.
+     *
+     * [mangaKey] — карточка, главу которой открывают. Сервер по ней решает,
+     * положены ли этому человеку ссылки на страницы: у части источников по
+     * одному адресу главы тайтл не опознать.
+     */
+    suspend fun getPages(sourceId: String, chapterUrl: String, mangaKey: String): PagesResponse =
         httpClient.get("$BASE_URL/api/manga/pages") {
             auth()
             parameter("source_id", sourceId)
             parameter("chapter_url", chapterUrl)
+            if (mangaKey.isNotBlank()) parameter("manga_key", mangaKey)
         }.parse()
 
     suspend fun getSources(): SourcesResponse =

@@ -3,6 +3,7 @@ package com.mimanga.app.core.network
 import androidx.compose.runtime.mutableStateOf
 import com.mimanga.app.BuildConfig
 import com.mimanga.app.domain.model.Manga
+import java.security.MessageDigest
 
 /**
  * Адреса картинок, которые отдаёт наш сервер.
@@ -37,29 +38,40 @@ object ServerImages {
     const val BLUR_WIDTH = 64
 
     /**
-     * Можно ли этому человеку видеть обложки 18+ неразмытыми.
+     * Метка того, кто сейчас смотрит: по ней различаются адреса обложек.
      *
-     * Размывает обложку сервер — он же решает по токену аккаунта, кому какую
-     * отдать. Но кэш картинок в приложении знает только адрес: войди человек в
-     * аккаунт, и на экране остались бы размытые обложки из кэша, пока тот не
-     * вытеснится. Поэтому право дописывается в адрес — сервер этот параметр
-     * не читает, а кэш видит другую картинку и идёт за ней заново.
+     * Обложку 18+ размывает сервер — он же решает по токену аккаунта, кому
+     * какую отдать. Но кэш картинок в приложении знает только адрес: войди
+     * человек в аккаунт — и на экране остались бы размытые обложки из кэша,
+     * выйди — остались бы неразмытые. Поэтому в адрес дописывается отпечаток
+     * токена: сервер этот параметр не читает, а кэш видит другую картинку и
+     * идёт за ней заново. У гостя метки нет, и его адреса — те же, что были.
+     *
+     * Отпечаток, а не сам токен: адрес попадает в кэш на диске и в журналы,
+     * а ключ от аккаунта там ни к чему.
      *
      * Значение — состояние Compose: адреса собираются прямо в отрисовке, и
-     * после входа в аккаунт карточки перерисуются сами.
+     * после входа или выхода карточки перерисуются сами.
      */
-    private val adultCovers = mutableStateOf(false)
+    private val mark = mutableStateOf("")
 
-    fun allowAdultCovers(allowed: Boolean) {
-        adultCovers.value = allowed
+    /** Вызывается при каждой смене токена — см. AuthStore. */
+    fun viewer(token: String?) {
+        mark.value = if (token.isNullOrBlank()) "" else fingerprint(token)
     }
+
+    private fun fingerprint(token: String): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(token.toByteArray())
+            .take(4)
+            .joinToString("") { "%02x".format(it) }
 
     fun cover(key: String, width: Int = 0): String {
         if (key.isBlank()) return ""
         val address = "${BuildConfig.SERVER_URL}/api/cover/$key"
         val parameters = buildList {
             if (width > 0) add("w=$width")
-            if (adultCovers.value) add("adult=1")
+            if (mark.value.isNotEmpty()) add("u=${mark.value}")
         }
         return if (parameters.isEmpty()) address
         else address + "?" + parameters.joinToString("&")

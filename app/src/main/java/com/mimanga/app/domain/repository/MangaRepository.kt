@@ -37,5 +37,6 @@ interface MangaRepository {
 
     suspend fun getChapters(sourceId: String, url: String): List<Chapter>
 
-    suspend fun getPages(sourceId: String, chapterUrl: String): List<Page>
+    /** Страницы главы. [mangaKey] — карточка: по ней сервер проверяет допуск. */
+    suspend fun getPages(sourceId: String, chapterUrl: String, mangaKey: String): List<Page>
 }

@@ -3,6 +3,7 @@ package com.mimanga.app.feature.reader.ui
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.core.network.isAgeBlocked
 import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.core.translate.PageTranslator
 import com.mimanga.app.core.translate.TranslationResult
@@ -24,6 +25,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -83,6 +86,38 @@ class ReaderViewModel @Inject constructor(
                 }
                 _state.update { it.copy(readingMode = mode) }
             }
+        }
+        // Вход и выход из аккаунта меняют права на 18+ прямо во время чтения.
+        // Открытые страницы — это содержимое, и после выхода из аккаунта они
+        // остаться не должны; ждать перезапуска приложения тут нечего.
+        // Спрашиваем сервер: решает он, а не приложение.
+        viewModelScope.launch {
+            accountRepository.token.drop(1).distinctUntilChanged().collect { recheckAccess() }
+        }
+    }
+
+    /** Сменился аккаунт — можно ли этому человеку то, что открыто. */
+    private suspend fun recheckAccess() {
+        if (mangaKey.isBlank() || _state.value.elements.isEmpty()) return
+        val denied = runCatching { mangaRepository.getMangaById(mangaKey) }
+            .exceptionOrNull() ?: return
+        if (denied.isAgeBlocked()) closeByAge(denied.userMessage("Тайтл недоступен"))
+    }
+
+    /**
+     * Закрывает открытое: тайтл этому человеку не положен.
+     *
+     * Страницы убираются из потока, а не просто перестают догружаться:
+     * загруженное — это те самые картинки, ради которых стоит ограничение.
+     */
+    private fun closeByAge(message: String) {
+        queue = emptyList()
+        startedChapterUrl = null
+        loadedPages.clear()
+        _state.update {
+            it.copy(elements = emptyList(), isLoading = false, error = message,
+                    totalPageCount = 0, loadedPageCount = 0, translations = emptyMap(),
+                    hasNextChapter = false)
         }
     }
 
@@ -428,7 +463,7 @@ class ReaderViewModel @Inject constructor(
         viewModelScope.launch {
             if (chapterIndex == 0) _state.update { it.copy(isLoading = true, error = null) }
             try {
-                val pages = mangaRepository.getPages(src.sourceId, chapter.url)
+                val pages = mangaRepository.getPages(src.sourceId, chapter.url, mangaKey)
                 when {
                     pages.isEmpty() && chapterIndex == 0 -> {
                         _state.update {
@@ -476,7 +511,10 @@ class ReaderViewModel @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                if (chapterIndex == 0) {
+                // Отказ по возрасту — не «не загрузилось»: следующую главу
+                // сервер тоже не отдаст, и показанное надо убрать.
+                if (e.isAgeBlocked()) closeByAge(e.userMessage("Тайтл недоступен"))
+                else if (chapterIndex == 0) {
                     _state.update {
                         it.copy(isLoading = false, error = e.userMessage("Глава не загрузилась"))
                     }

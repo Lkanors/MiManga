@@ -53,6 +53,7 @@ class MangaRepositoryImpl @Inject constructor(
     override suspend fun getChapters(sourceId: String, url: String): List<Chapter> =
         api.getChapters(sourceId, url).chapters
 
-    override suspend fun getPages(sourceId: String, chapterUrl: String): List<Page> =
-        api.getPages(sourceId, chapterUrl).pages
+    override suspend fun getPages(sourceId: String, chapterUrl: String,
+                                  mangaKey: String): List<Page> =
+        api.getPages(sourceId, chapterUrl, mangaKey).pages
 }

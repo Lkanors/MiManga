@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.mimanga.app.core.network.ServerImages
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -38,20 +39,34 @@ class AuthStore @Inject constructor(
     init {
         scope.launch {
             dataStore.data.collect { prefs ->
-                state.value = prefs[TOKEN_KEY]?.takeIf { it.isNotBlank() }
+                hold(prefs[TOKEN_KEY]?.takeIf { it.isNotBlank() })
             }
         }
+    }
+
+    /**
+     * Запоминает токен — и сообщает о смене адресам картинок.
+     *
+     * Вход и выход меняют не только то, что отвечает сервер, но и то, что
+     * человеку положено видеть. Картинки идут мимо этого класса, через свой
+     * кэш, и без метки в адресе показывали бы прежнее, пока кэш не вытеснится
+     * (см. ServerImages.viewer). Место одно на все пути смены токена, чтобы
+     * ни один из них не оказался забыт.
+     */
+    private fun hold(token: String?) {
+        state.value = token
+        ServerImages.viewer(token)
     }
 
     fun current(): String? = state.value
 
     suspend fun save(token: String) {
-        state.value = token
+        hold(token)
         dataStore.edit { prefs -> prefs[TOKEN_KEY] = token }
     }
 
     suspend fun clear() {
-        state.value = null
+        hold(null)
         dataStore.edit { prefs -> prefs.remove(TOKEN_KEY) }
     }
 }
