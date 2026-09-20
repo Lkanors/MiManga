@@ -26,6 +26,13 @@ data class DetailsState(
     val userRating: Float? = null,
     val rating: RatingDetails? = null,
     val error: String? = null,
+    /**
+     * Тайтл 18+, а возраст не подтверждён: сервер отказал (403).
+     *
+     * Карточка в каталоге у такого человека есть — закрыт вход внутрь,
+     * поэтому экран показывает не главы с описанием, а объяснение.
+     */
+    val ageBlocked: Boolean = false,
     val notice: String? = null,
     /**
      * Прогресс по главам ВЫБРАННОГО источника: ключ — «источник:ссылка».

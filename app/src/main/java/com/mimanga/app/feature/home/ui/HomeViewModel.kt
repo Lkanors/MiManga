@@ -2,6 +2,7 @@ package com.mimanga.app.feature.home.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.domain.model.HomeRow
 import com.mimanga.app.domain.model.Manga
 import com.mimanga.app.domain.repository.AccountRepository
@@ -91,7 +92,7 @@ class HomeViewModel @Inject constructor(
                 if (!quiet) {
                     _state.update {
                         it.copy(isLoading = false,
-                                error = error.message ?: "Сервер недоступен")
+                                error = error.userMessage("Сервер недоступен"))
                     }
                 } else {
                     _state.update { it.copy(isLoading = false) }

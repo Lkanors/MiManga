@@ -3,6 +3,7 @@ package com.mimanga.app.feature.reader.ui
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.core.translate.PageTranslator
 import com.mimanga.app.core.translate.TranslationResult
 import com.mimanga.app.core.translate.TranslatorStatus
@@ -476,7 +477,9 @@ class ReaderViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 if (chapterIndex == 0) {
-                    _state.update { it.copy(isLoading = false, error = "Ошибка загрузки: ${e.message}") }
+                    _state.update {
+                        it.copy(isLoading = false, error = e.userMessage("Глава не загрузилась"))
+                    }
                 }
                 loadingNextChapter = false
             }

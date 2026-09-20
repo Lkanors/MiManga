@@ -1,5 +1,6 @@
 package com.mimanga.app.core.network
 
+import androidx.compose.runtime.mutableStateOf
 import com.mimanga.app.BuildConfig
 import com.mimanga.app.domain.model.Manga
 
@@ -35,10 +36,33 @@ object ServerImages {
     /** Подложка шапки тайтла: размытые пятна, хватает самой мелкой копии. */
     const val BLUR_WIDTH = 64
 
-    fun cover(key: String, width: Int = 0): String = when {
-        key.isBlank() -> ""
-        width > 0 -> "${BuildConfig.SERVER_URL}/api/cover/$key?w=$width"
-        else -> "${BuildConfig.SERVER_URL}/api/cover/$key"
+    /**
+     * Можно ли этому человеку видеть обложки 18+ неразмытыми.
+     *
+     * Размывает обложку сервер — он же решает по токену аккаунта, кому какую
+     * отдать. Но кэш картинок в приложении знает только адрес: войди человек в
+     * аккаунт, и на экране остались бы размытые обложки из кэша, пока тот не
+     * вытеснится. Поэтому право дописывается в адрес — сервер этот параметр
+     * не читает, а кэш видит другую картинку и идёт за ней заново.
+     *
+     * Значение — состояние Compose: адреса собираются прямо в отрисовке, и
+     * после входа в аккаунт карточки перерисуются сами.
+     */
+    private val adultCovers = mutableStateOf(false)
+
+    fun allowAdultCovers(allowed: Boolean) {
+        adultCovers.value = allowed
+    }
+
+    fun cover(key: String, width: Int = 0): String {
+        if (key.isBlank()) return ""
+        val address = "${BuildConfig.SERVER_URL}/api/cover/$key"
+        val parameters = buildList {
+            if (width > 0) add("w=$width")
+            if (adultCovers.value) add("adult=1")
+        }
+        return if (parameters.isEmpty()) address
+        else address + "?" + parameters.joinToString("&")
     }
 
     fun cover(manga: Manga, width: Int = 0): String = cover(manga.actionKey, width)

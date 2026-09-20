@@ -114,6 +114,22 @@ fun MangaCard(
                         .size(16.dp),
                 )
             }
+            // Пометка 18+. Тем, кто возраст не подтвердил, сервер отдаёт
+            // обложку размытой — без подписи человек решил бы, что картинка
+            // просто не загрузилась.
+            if (manga.isAdult) {
+                Text(
+                    "18+",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(if (manga.isFavorite) Alignment.CenterEnd else Alignment.TopEnd)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xCCB3261E))
+                        .padding(horizontal = 5.dp, vertical = 1.dp),
+                )
+            }
 
             if (hasFooter) {
                 Row(

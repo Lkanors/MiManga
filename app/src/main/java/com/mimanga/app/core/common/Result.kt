@@ -1,5 +1,7 @@
 package com.mimanga.app.core.common
 
+import com.mimanga.app.core.network.userMessage
+
 /**
  * Универсальный тип результата операций.
  */
@@ -28,6 +30,8 @@ suspend fun <T> safeCall(block: suspend () -> T): Result<T> {
     return try {
         Result.Success(block())
     } catch (e: Exception) {
-        Result.Error(e, e.message)
+        // Текст ошибки может уйти на экран, а в сетевых сообщениях лежит адрес
+        // сервера — поэтому чистим его здесь же (см. core/network/NetworkErrors).
+        Result.Error(e, e.userMessage("Не получилось"))
     }
 }

@@ -2,6 +2,8 @@ package com.mimanga.app.feature.details.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.data.remote.ServerException
+import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.domain.model.LibraryStatus
 import com.mimanga.app.domain.model.Manga
 import com.mimanga.app.domain.model.MangaSource
@@ -62,7 +64,9 @@ class DetailsViewModel @Inject constructor(
         }
         _state.update { it.copy(manga = manga, isLoadingDetail = true) }
         viewModelScope.launch {
-            val full = runCatching { mangaRepository.getMangaById(manga.id) }.getOrElse {
+            val loaded = runCatching { mangaRepository.getMangaById(manga.id) }
+            if (blockedByAge(loaded.exceptionOrNull())) return@launch
+            val full = loaded.getOrElse {
                 Timber.w(it, "Карточка не загрузилась, показываем то, что пришло из списка")
                 manga
             }
@@ -81,6 +85,23 @@ class DetailsViewModel @Inject constructor(
             loadComments()
             loadSimilar(full.id)
         }
+    }
+
+    /**
+     * Отказ по возрасту: тайтл 18+, а его не подтвердили.
+     *
+     * Отличать это от обычной сетевой ошибки обязательно: при обычной экран
+     * показывает то, что пришло из каталога, и человек продолжает читать. Тут
+     * показывать нечего — сервер не отдаст ни описания, ни глав.
+     */
+    private fun blockedByAge(error: Throwable?): Boolean {
+        val denied = error as? ServerException ?: return false
+        if (denied.status != 403) return false
+        _state.update {
+            it.copy(isLoadingDetail = false, isLoadingChapters = false,
+                    ageBlocked = true, error = denied.message)
+        }
+        return true
     }
 
     // ------------------------------------------------------------------ главы
@@ -116,7 +137,7 @@ class DetailsViewModel @Inject constructor(
             } catch (error: Exception) {
                 _state.update {
                     it.copy(isLoadingChapters = false,
-                            error = "Главы не загрузились: ${error.message}")
+                            error = error.userMessage("Главы не загрузились"))
                 }
             }
             loadProgress(source)
@@ -168,7 +189,9 @@ class DetailsViewModel @Inject constructor(
         val manga = _state.value.manga ?: return
         viewModelScope.launch {
             _state.update { it.copy(isLoadingDetail = true, error = null) }
-            val full = runCatching { mangaRepository.getMangaById(manga.id) }.getOrElse {
+            val loaded = runCatching { mangaRepository.getMangaById(manga.id) }
+            if (blockedByAge(loaded.exceptionOrNull())) return@launch
+            val full = loaded.getOrElse {
                 Timber.w(it, "Карточка не обновилась")
                 manga
             }
@@ -319,6 +342,6 @@ class DetailsViewModel @Inject constructor(
 
     private fun failed(error: Throwable, fallback: String) {
         Timber.w(error, fallback)
-        _state.update { it.copy(error = error.message ?: fallback) }
+        _state.update { it.copy(error = error.userMessage(fallback)) }
     }
 }

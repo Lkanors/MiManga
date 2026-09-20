@@ -2,6 +2,7 @@ package com.mimanga.app.feature.catalog.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.domain.model.CatalogFilters
 import com.mimanga.app.domain.model.CatalogSort
 import com.mimanga.app.domain.repository.AccountRepository
@@ -170,5 +171,5 @@ class CatalogViewModel @Inject constructor(
     fun refresh() = loadFirstPage()
 
     private fun message(error: Exception): String =
-        error.message ?: "Сервер недоступен. Проверьте подключение к интернету."
+        error.userMessage("Сервер недоступен. Проверьте подключение к интернету.")
 }

@@ -2,6 +2,7 @@ package com.mimanga.app.feature.comments.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.domain.model.Comment
 import com.mimanga.app.domain.repository.AccountRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -94,7 +95,7 @@ class CommentsViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(isLoading = false,
-                                error = error.message ?: "Комментарии не загрузились")
+                                error = error.userMessage("Комментарии не загрузились"))
                     }
                 }
         }
@@ -117,7 +118,7 @@ class CommentsViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(isSending = false,
-                                error = error.message ?: "Комментарий не отправился")
+                                error = error.userMessage("Комментарий не отправился"))
                     }
                 }
         }

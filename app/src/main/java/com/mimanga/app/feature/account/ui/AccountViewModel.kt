@@ -2,6 +2,7 @@ package com.mimanga.app.feature.account.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.domain.model.Manga
 import com.mimanga.app.domain.repository.AccountRepository
 import com.mimanga.app.feature.account.state.AccountDetail
@@ -79,7 +80,7 @@ class AccountViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(isSubmitting = false,
-                                authError = error.message ?: "Не получилось войти")
+                                authError = error.userMessage("Не получилось войти"))
                     }
                 }
         }
@@ -117,7 +118,7 @@ class AccountViewModel @Inject constructor(
                 .onSuccess { account -> _state.update { it.copy(account = account) } }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(adultError = error.message ?: "Дату рождения не приняли")
+                        it.copy(adultError = error.userMessage("Дату рождения не приняли"))
                     }
                 }
         }
@@ -135,7 +136,7 @@ class AccountViewModel @Inject constructor(
                 }
                 .onFailure { error ->
                     _state.update {
-                        it.copy(adultError = error.message ?: "Настройку не удалось сохранить")
+                        it.copy(adultError = error.userMessage("Настройку не удалось сохранить"))
                     }
                 }
         }
@@ -193,7 +194,7 @@ class AccountViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(isLoading = false,
-                                error = error.message ?: "Список не загрузился")
+                                error = error.userMessage("Список не загрузился"))
                     }
                 }
         }
@@ -217,7 +218,7 @@ class AccountViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(isLoading = false,
-                                error = error.message ?: "Настройки не загрузились")
+                                error = error.userMessage("Настройки не загрузились"))
                     }
                 }
         }
@@ -299,7 +300,7 @@ class AccountViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(isDetailLoading = false,
-                                error = error.message ?: "Список не загрузился")
+                                error = error.userMessage("Список не загрузился"))
                     }
                 }
         }

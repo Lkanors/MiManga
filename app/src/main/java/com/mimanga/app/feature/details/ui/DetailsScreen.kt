@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -299,6 +300,40 @@ fun DetailsScreen(
             onRate = { value -> viewModel.rate(value); ratingDialog = false },
             onRemove = { viewModel.removeRating(); ratingDialog = false },
         )
+    }
+}
+
+/**
+ * Отказ по возрасту: тайтл 18+, а он не подтверждён.
+ *
+ * Экран, а не строчка над главами: сервер такой карточки не отдаёт вовсе, и
+ * показывать её половину, собранную из каталога, значило бы делать вид, что
+ * тайтл открылся. Человеку нужно понять две вещи — что дело в возрасте и что
+ * с этим делать.
+ */
+@Composable
+private fun AgeBlocked(title: String, message: String?, onBack: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp),
+        ) {
+            Text("18+", style = MaterialTheme.typography.displaySmall,
+                 color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(12.dp))
+            Text(title, style = MaterialTheme.typography.titleMedium,
+                 textAlign = TextAlign.Center)
+            Spacer(Modifier.height(10.dp))
+            Text(
+                message ?: "Этот тайтл открывается только после входа в аккаунт " +
+                    "с указанной датой рождения, по которой есть 18 лет.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = onBack) { Text("Назад") }
+        }
     }
 }
 

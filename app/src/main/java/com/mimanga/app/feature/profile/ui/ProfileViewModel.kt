@@ -2,6 +2,7 @@ package com.mimanga.app.feature.profile.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mimanga.app.core.network.userMessage
 import com.mimanga.app.domain.model.PublicProfile
 import com.mimanga.app.domain.repository.AccountRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,7 +39,7 @@ class ProfileViewModel @Inject constructor(
                 .onFailure { error ->
                     _state.update {
                         it.copy(isLoading = false,
-                                error = error.message ?: "Профиль не открылся")
+                                error = error.userMessage("Профиль не открылся"))
                     }
                 }
         }
