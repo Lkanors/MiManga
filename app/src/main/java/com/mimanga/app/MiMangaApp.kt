@@ -10,7 +10,9 @@ import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import com.mimanga.app.core.network.ImageProgress
 import com.mimanga.app.core.network.ServerTls
+import com.mimanga.app.data.remote.AuthStore
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 import okhttp3.Dispatcher
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -19,6 +21,15 @@ import java.util.concurrent.TimeUnit
 
 @HiltAndroidApp
 class MiMangaApp : Application(), SingletonImageLoader.Factory {
+
+    /**
+     * Токен аккаунта нужен и картинкам: обложки приходят с нашего сервера, и
+     * по токену он решает, что показывать этому человеку. Запрос без токена
+     * сервер считает гостевым — обложки возвращались обрезанными по правам
+     * даже тому, кто в аккаунт вошёл.
+     */
+    @Inject
+    lateinit var authStore: AuthStore
 
     /**
      * Referer, который CDN конкретных источников требуют при отдаче картинок.
@@ -73,10 +84,31 @@ class MiMangaApp : Application(), SingletonImageLoader.Factory {
                 maxRequestsPerHost = 12
             })
             .sslSocketFactory(ServerTls.sslContext(trustManager).socketFactory, trustManager)
+            .addInterceptor(serverTokenInterceptor())
             .addInterceptor(refererInterceptor())
             // Считает скачанные байты: по ним страница рисует свой прогресс.
             .addNetworkInterceptor(ImageProgress.interceptor())
             .build()
+    }
+
+    /**
+     * Заголовок Authorization для картинок с НАШЕГО сервера.
+     *
+     * Только для него: на чужие CDN токен отправлять нельзя — им он не нужен,
+     * а вот утечь по дороге может.
+     */
+    private fun serverTokenInterceptor(): Interceptor = Interceptor { chain ->
+        val request = chain.request()
+        val token = if (request.url.host == serverHost) authStore.current() else null
+        chain.proceed(
+            if (token == null) request
+            else request.newBuilder().header("Authorization", "Bearer $token").build()
+        )
+    }
+
+    /** Хост нашего сервера — по нему картинки отличаются от чужих CDN. */
+    private val serverHost: String by lazy {
+        runCatching { java.net.URI(BuildConfig.SERVER_URL).host }.getOrNull().orEmpty()
     }
 
     private fun refererInterceptor(): Interceptor = Interceptor { chain ->

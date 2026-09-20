@@ -223,7 +223,7 @@ class MangaServerApi @Inject constructor(
         }.parse()
 
     suspend fun getFilterOptions(): FilterOptions =
-        httpClient.get("$BASE_URL/api/catalog/filters").parse()
+        httpClient.get("$BASE_URL/api/catalog/filters") { auth() }.parse()
 
     suspend fun getMangaById(mangaId: String): Manga =
         httpClient.get("$BASE_URL/api/manga/$mangaId") { auth() }.parse()
@@ -236,28 +236,33 @@ class MangaServerApi @Inject constructor(
 
     suspend fun getChaptersByMangaId(mangaId: String, sourceId: String): ChaptersResponse =
         httpClient.get("$BASE_URL/api/manga/$mangaId/chapters") {
+            auth()
             parameter("source_id", sourceId)
         }.parse()
 
     suspend fun getMangaDetail(sourceId: String, url: String): Manga =
         httpClient.get("$BASE_URL/api/manga/detail") {
+            auth()
             parameter("source_id", sourceId)
             parameter("url", url)
         }.parse()
 
     suspend fun getChapters(sourceId: String, url: String): ChaptersResponse =
         httpClient.get("$BASE_URL/api/manga/chapters") {
+            auth()
             parameter("source_id", sourceId)
             parameter("url", url)
         }.parse()
 
     suspend fun getPages(sourceId: String, chapterUrl: String): PagesResponse =
         httpClient.get("$BASE_URL/api/manga/pages") {
+            auth()
             parameter("source_id", sourceId)
             parameter("chapter_url", chapterUrl)
         }.parse()
 
-    suspend fun getSources(): SourcesResponse = httpClient.get("$BASE_URL/api/sources").parse()
+    suspend fun getSources(): SourcesResponse =
+        httpClient.get("$BASE_URL/api/sources") { auth() }.parse()
 
     // ----------------------------------------------------------------- аккаунт
 
@@ -366,6 +371,7 @@ class MangaServerApi @Inject constructor(
 
     suspend fun getComments(mangaKey: String, page: Int = 1): CommentsResponse =
         httpClient.get("$BASE_URL/api/manga/$mangaKey/comments") {
+            auth()
             parameter("page", page)
         }.parse()
 
@@ -380,6 +386,15 @@ class MangaServerApi @Inject constructor(
         httpClient.delete("$BASE_URL/api/comments/$commentId") { auth() }.parse<Map<String, String>>()
     }
 
+    /**
+     * Токен аккаунта в заголовке.
+     *
+     * Ставится на КАЖДЫЙ запрос к нашему серверу, кроме входа и регистрации
+     * (там его ещё нет). Правило именно такое — «на каждый», а не «где нужно»:
+     * по токену сервер решает не только что показать в списках, но и что
+     * человеку открывать можно. Запрос без токена он считает гостевым — и
+     * список глав, например, приходил пустым у того, кто в аккаунт вошёл.
+     */
     private fun io.ktor.client.request.HttpRequestBuilder.auth() {
         authStore.current()?.let { header("Authorization", "Bearer $it") }
     }
